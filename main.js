@@ -20,6 +20,12 @@ var lastRecord = null;
 
 var currentPage = 1;
 
+asyncUtils.csvLoad(csvFileName).then(function(rows) {
+    var oldRecords = auctionRowsToObjects(rows);
+    var lastRecord = oldRecords[0];
+
+});
+
 loadRecordsFromCsv().then(run).then(function() {
     var rows = records.concat(oldRecords).map(function(record) {
         return [record.userName, record.userId, record.itemId];
@@ -28,22 +34,6 @@ loadRecordsFromCsv().then(run).then(function() {
         fs.writeFileSync(csvFileName, csv);
     });
 }).done();
-
-function loadRecordsFromCsv() {
-    if (!fs.existsSync(csvFileName)) {
-        return q.when();
-    }
-    return q.denodeify(csv.parse)(fs.readFileSync(csvFileName).toString()).then(function(rows) {
-        oldRecords = rows.map(function(row) {
-            return {
-                username: row[0],
-                userId: row[1],
-                itemId: row[2]
-            };
-        });
-        lastRecord = oldRecords[0];
-    });
-}
 
 function run() {
     var currentUrl = util.format(urlTemplate, userId, currentPage);
@@ -62,39 +52,4 @@ function run() {
         }
         return run();
     });
-}
-
-function loadPage(url) {
-    var defer = q.defer();
-    var request = http.request(url, function(response) {
-        var body = "";
-        response.on("data", function(chunk) {
-            body += chunk.toString();
-        });
-        response.on("end", function() {
-            defer.resolve(body);
-        });
-    });
-
-    request.on("error", function(error) {
-        defer.reject(error);
-    });
-    request.end();
-    return defer.promise.then(function(html) {
-        return cheerio.load(html);
-    });
-}
-
-function findUsersItems($) {
-    var items = [];
-    $(".feedbacks-row").each(function(_, row) {
-        var $row = $(row);
-        $showFeedbackLink = $row.find(".showFeedback");
-        items.push({
-            userName: $row.find(".uname a").text(),
-            userId: $showFeedbackLink.data("userId"),
-            itemId: $showFeedbackLink.data("itemId")
-        });
-    });
-    return items;
 }
