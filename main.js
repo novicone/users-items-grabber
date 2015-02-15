@@ -22,7 +22,7 @@ var currentPage = 1;
 
 loadRecordsFromCsv().then(run).then(function() {
     var rows = records.concat(oldRecords).map(function(record) {
-        return [record.userName, record.userId, record.itemId];
+        return [record.username, record.userId, record.itemId];
     });
     return q.denodeify(csv.stringify)(rows).then(function(csv) {
         fs.writeFileSync(csvFileName, csv);
@@ -34,14 +34,24 @@ function loadRecordsFromCsv() {
         return q.when();
     }
     return q.denodeify(csv.parse)(fs.readFileSync(csvFileName).toString()).then(function(rows) {
-        oldRecords = rows.map(function(row) {
+        oldRecords = rows.map(rows[0].length === 3 ? read3 : read2);
+        lastRecord = oldRecords[0];
+
+        function read2(row) {
+            return {
+                username: "",
+                userId: row[1],
+                itemId: row[2]
+            };
+        }
+
+        function read3(row) {
             return {
                 username: row[0],
                 userId: row[1],
                 itemId: row[2]
             };
-        });
-        lastRecord = oldRecords[0];
+        }
     });
 }
 
@@ -91,7 +101,7 @@ function findUsersItems($) {
         var $row = $(row);
         $showFeedbackLink = $row.find(".showFeedback");
         items.push({
-            userName: $row.find(".uname a").text(),
+            username: $row.find(".uname a").text(),
             userId: $showFeedbackLink.data("userId"),
             itemId: $showFeedbackLink.data("itemId")
         });
